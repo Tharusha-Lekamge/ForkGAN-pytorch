@@ -76,8 +76,10 @@ if __name__ == '__main__':
                 model.compute_visuals()
                 visualizer.display_current_results(model.get_current_visuals(), epoch, save_result)
                 save_image_grid(model.get_current_visuals(), os.path.join(test_dir, f'{epoch}_{epoch_iter}.jpg'))
+                print("opt.instance_level = ", opt.instance_level)
                 if opt.instance_level != 'none':
-                    save_image_grid_inst(model.get_current_visuals(), os.path.join(test_dir, f'{epoch}_{epoch_iter}_inst.jpg'))
+                    #save_image_grid_inst(model.get_current_visuals(), os.path.join(test_dir, f'{epoch}_{epoch_iter}_inst.jpg'))
+                    pass
 
             if total_iters % opt.print_freq == 0 and opt.gpu == 0:    # print training losses and save logging information to the disk
                 losses = model.get_current_losses()
