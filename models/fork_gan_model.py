@@ -97,6 +97,7 @@ class ForkGANModel(BaseModel):
                 self.model_names += ['D_A_inst', 'D_B_inst', 'D_rec_A_inst', 'D_rec_B_inst', 'D_rec_fake_A_inst', 'D_rec_fake_B_inst']
 
                 # Visuals
+                print(['real_A_inst', 'fake_B_inst', 'rec_A_inst', 'rec_fake_B_inst', 'fake_A__inst'])
                 visual_names_inst_A = ['real_A_inst', 'fake_B_inst', 'rec_A_inst', 'rec_fake_B_inst', 'fake_A__inst']
                 visual_names_inst_B = ['real_B_inst', 'fake_A_inst', 'rec_B_inst', 'rec_fake_A_inst', 'fake_B__inst']
                 self.visual_names_inst = visual_names_inst_A + visual_names_inst_B
