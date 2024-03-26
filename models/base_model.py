@@ -39,6 +39,7 @@ class BaseModel(ABC):
         self.loss_names = []
         self.model_names = []
         self.visual_names = []
+        self.visual_names_inst = []
         self.optimizers = []
         self.image_paths = []
         self.metric = 0  # used for learning rate policy 'plateau'
@@ -137,6 +138,7 @@ class BaseModel(ABC):
         """Return visualization images. train.py will display these images with visdom, and save the images to a HTML"""
         visual_ret = OrderedDict()
         for name in self.visual_names_inst:
+            print(name)
             if isinstance(name, str):
                 visual_ret[name] = getattr(self, name)
         return visual_ret
