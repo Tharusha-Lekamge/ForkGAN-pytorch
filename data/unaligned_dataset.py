@@ -29,8 +29,6 @@ class UnalignedDataset(BaseDataset):
         #elf.B_paths = sorted(make_dataset(self.dir_B, opt.max_dataset_size))    # load images from '/path/to/data/trainB'
         self.A_paths = [os.path.join(self.dir_A, f) for f in os.listdir(self.dir_A)]
         self.B_paths = [os.path.join(self.dir_B, f) for f in os.listdir(self.dir_B)]
-        print(self.A_paths)
-        print(self.B_paths)
         self.A_size = len(self.A_paths)  # get the size of dataset A
         self.B_size = len(self.B_paths)  # get the size of dataset B
 

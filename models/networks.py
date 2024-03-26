@@ -109,18 +109,18 @@ def init_net(net, init_type='normal', init_gain=0.02, gpu=0):
     return net
 
 
-def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, init_type='normal', init_gain=0.02, gpu=0):
+def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, init_type='normal', init_gain=0.02, gpu=0, transfer=False):
     net = None
     norm_layer = get_norm_layer(norm_type=norm)
 
     if netG == 'resnet_9blocks':
-        net = ResnetGenerator(input_nc, output_nc, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=9)
+        net = ResnetGenerator(input_nc, output_nc, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=9, transfer=transfer)
     elif netG == 'resnet_6blocks':
-        net = ResnetGenerator(input_nc, output_nc, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=6)
+        net = ResnetGenerator(input_nc, output_nc, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=6, transfer=transfer)
     elif netG == 'unet_128':
-        net = UnetGenerator(input_nc, output_nc, 7, ngf, norm_layer=norm_layer, use_dropout=use_dropout)
+        net = UnetGenerator(input_nc, output_nc, 7, ngf, norm_layer=norm_layer, use_dropout=use_dropout, transfer=transfer)
     elif netG == 'unet_256':
-        net = UnetGenerator(input_nc, output_nc, 8, ngf, norm_layer=norm_layer, use_dropout=use_dropout)
+        net = UnetGenerator(input_nc, output_nc, 8, ngf, norm_layer=norm_layer, use_dropout=use_dropout, transfer=transfer)
     else:
         raise NotImplementedError('Generator model name [%s] is not recognized' % netG)
     return init_net(net, init_type, init_gain, gpu)
@@ -373,7 +373,7 @@ class ResnetGenerator(nn.Module):
     We adapt Torch code and idea from Justin Johnson's neural style transfer project(https://github.com/jcjohnson/fast-neural-style)
     """
 
-    def __init__(self, input_nc, output_nc, ngf=64, norm_layer=nn.BatchNorm2d, use_dropout=False, n_blocks=6, padding_type='reflect'):
+    def __init__(self, input_nc, output_nc, ngf=64, norm_layer=nn.BatchNorm2d, use_dropout=False, n_blocks=6, padding_type='reflect', transfer=False):
         """Construct a Resnet-based generator
 
         Parameters:
@@ -418,6 +418,11 @@ class ResnetGenerator(nn.Module):
             model_enc += [ResnetBlock(ngf * mult, padding_type=padding_type, norm_layer=norm_layer, use_dropout=use_dropout, use_bias=use_bias, dilation=2)]
         mult_ = mult
 
+        if transfer:
+            n_blocks_transfer_net = 4
+            for i in range(n_blocks_transfer_net):
+                model_enc += [ResnetBlock(ngf * mult, padding_type=padding_type, norm_layer=norm_layer, use_dropout=use_dropout, use_bias=use_bias, dilation=2)]
+
         model_dec = []
         for i in range(n_blocks_dec):
             model_dec += [ResnetBlock(ngf * mult, padding_type=padding_type, norm_layer=norm_layer, use_dropout=use_dropout, use_bias=use_bias, dilation=2)]
@@ -429,10 +434,22 @@ class ResnetGenerator(nn.Module):
                           Conv2d(ngf * mult, int(ngf * mult / 2), kernel_size=3, stride=1, padding=0),
                           norm_layer(int(ngf * mult / 2)),
                           nn.ReLU(True)]
-        model_dec += [nn.ReflectionPad2d(3)]
-        model_dec += [nn.Conv2d(ngf, output_nc, kernel_size=7, padding=0)]
-        model_dec += [nn.Tanh()]
 
+        # Divide decoder into two -> One for upsampling + output
+        model_dec_upsample = []
+        model_dec_upsample += [nn.ReflectionPad2d(3)]
+        model_dec_upsample += [nn.Conv2d(ngf, output_nc, kernel_size=7, padding=0)]
+        model_dec_upsample += [nn.Tanh()]
+
+        # Divide decoder into two -> One for Confidenc
+        if transfer: # Create confidence prediction module if enabled
+            model_conf = [
+                nn.Conv2d(ngf, output_nc, kernel_size=3, stride=2, padding=1),  # Adjust parameters as needed
+                nn.ReLU(),
+                nn.ReflectionPad2d(1),
+                nn.Conv2d(1, 1, kernel_size=7, stride=1, padding=0),
+                nn.Softplus()
+            ]
 
         model_rec = []
         model_rec += [GaussianNoise(std=0.02)]
@@ -458,15 +475,23 @@ class ResnetGenerator(nn.Module):
         model_rec += [Conv2d(ngf, output_nc, kernel_size=7, padding=0)]
         model_rec += [nn.Tanh()]
 
-        self.model_enc = nn.Sequential(*model_enc)
-        self.model_dec = nn.Sequential(*model_dec)
-        self.model_rec = nn.Sequential(*model_rec)
+        self.model_enc  = nn.Sequential(*model_enc)
+        self.model_dec  = nn.Sequential(*model_dec)
+        self.model_dec_upsample  = nn.Sequential(*model_dec_upsample)
+        self.model_rec  = nn.Sequential(*model_rec)
+        if transfer:
+            self.model_conf = nn.Sequential(*model_conf)
 
     def forward(self, input):
         enc = self.model_enc(input)
-        rec = self.model_dec(enc)
-        dec = self.model_rec(enc)
-        return enc, rec, dec
+        dec = self.model_dec(enc)
+        rec = self.model_rec(enc)
+        dec_upsampled = self.model_dec_upsample(dec)
+        conf = None
+        if hasattr(self, 'model_conf'):
+            conf = self.model_conf(dec)
+            conf = F.interpolate(conf, size=input.shape[2:], mode='bilinear', align_corners=False) # Adjust as needed
+        return enc, rec, dec_upsampled, conf
 
 
 class ResnetBlock(nn.Module):
@@ -679,8 +704,8 @@ class PixelDiscriminator(nn.Module):
 
 class UnetGenerator(nn.Module):
     """Create a Unet-based generator"""
-
-    def __init__(self, input_nc, output_nc, num_downs, ngf=64, norm_layer=nn.BatchNorm2d, use_dropout=False):
+    # TODO: Adapt to AUGAN: Implement transfer additional resnet blocks
+    def __init__(self, input_nc, output_nc, num_downs, ngf=64, norm_layer=nn.BatchNorm2d, use_dropout=False, transfer=False):
         """Construct a Unet generator
         Parameters:
             input_nc (int)  -- the number of channels in input images

@@ -44,7 +44,7 @@ class ForkGANModel(BaseModel):
             assert (opt.input_nc == opt.output_nc)
 
         self.netG_A = networks.define_G(opt.input_nc, opt.output_nc, opt.ngf, opt.netG, opt.norm,
-                                        not opt.no_dropout, opt.init_type, opt.init_gain, opt.gpu)
+                                        not opt.no_dropout, opt.init_type, opt.init_gain, opt.gpu, transfer=True)
         self.netG_B = networks.define_G(opt.output_nc, opt.input_nc, opt.ngf, opt.netG, opt.norm,
                                         not opt.no_dropout, opt.init_type, opt.init_gain, opt.gpu)
 
@@ -168,10 +168,10 @@ class ForkGANModel(BaseModel):
 
     def forward(self):
         with tamp.autocast():
-            self.enc_A, self.rec_A, self.fake_B = self.netG_A(self.real_A)  # G_A(A)
-            self.enc_fake_B, self.rec_fake_B, self.fake_A_ = self.netG_B(self.fake_B) # G_B(G_A(A))
-            self.enc_B, self.rec_B, self.fake_A = self.netG_B(self.real_B)  # G_B(B)
-            self.enc_fake_A, self.rec_fake_A, self.fake_B_ = self.netG_A(self.fake_A) # G_A(G_B(B))
+            self.enc_A, self.rec_A, self.fake_B, self.conf_fake_B = self.netG_A(self.real_A)  # G_A(A)
+            self.enc_fake_B, self.rec_fake_B, self.fake_A_ , self.conf_fake_A_ = self.netG_B(self.fake_B) # G_B(G_A(A))
+            self.enc_B, self.rec_B, self.fake_A, self.conf_fake_A = self.netG_B(self.real_B)  # G_B(B)
+            self.enc_fake_A, self.rec_fake_A, self.fake_B_, self.conf_fake_B_ = self.netG_A(self.fake_A) # G_A(G_B(B))
 
             if self.opt.isTrain and self.opt.instance_level and self.BBoxAvailable(self.bboxes_A) and self.BBoxAvailable(self.bboxes_B):
                 # A -> B instances
@@ -284,10 +284,10 @@ class ForkGANModel(BaseModel):
             # Identity loss
             if lambda_idt > 0:
                 # G_A should be identity if real_B is fed: ||G_A(B) - B||
-                _, _, self.idt_A = self.netG_A(self.real_B)
+                _, _, self.idt_A, _ = self.netG_A(self.real_B)
                 self.loss_idt_A = self.criterionIdt(self.idt_A, self.real_B) * lambda_B * lambda_idt
                 # G_B should be identity if real_A is fed: ||G_B(A) - A||
-                _, _, self.idt_B = self.netG_B(self.real_A)
+                _, _, self.idt_B, _ = self.netG_B(self.real_A)
                 self.loss_idt_B = self.criterionIdt(self.idt_B, self.real_A) * lambda_A * lambda_idt
             else:
                 self.loss_idt_A = 0
