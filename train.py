@@ -43,7 +43,7 @@ if __name__ == '__main__':
         opt.ngpus = opt.world_size
         opt.batch_size = int(opt.batch_size / opt.ngpus)
         opt.num_threads = int(opt.num_threads / opt.ngpus)
-    
+
     initialize_wandb(opt)
 
     dataset = create_dataset(opt)  # create a dataset given opt.dataset_mode and other options
