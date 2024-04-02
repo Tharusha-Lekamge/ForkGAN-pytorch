@@ -613,10 +613,10 @@ class ResnetGenerator(nn.Module):
         # Divide decoder into two -> One for Confidenc
         if transfer: # Create confidence prediction module if enabled
             model_conf = [
+                nn.ReflectionPad2d(3),
                 nn.Conv2d(ngf, output_nc, kernel_size=3, stride=2, padding=1),  # Adjust parameters as needed
                 nn.ReLU(),
                 nn.ReflectionPad2d(1),
-                nn.Conv2d(1, 1, kernel_size=7, stride=1, padding=0),
                 nn.Softplus()
             ]
 
