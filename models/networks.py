@@ -471,6 +471,20 @@ def cal_gradient_penalty(
     else:
         return 0.0, None
 
+class ConfidenceLoss(nn.Module):
+    def __init__(self):
+        super(ConfidenceLoss, self).__init__()
+        self.loss = nn.L1Loss()
+
+    def __call__(self, real_A, fake_A, conf_sigma):
+        loss = torch.abs(real_A - fake_A)
+        if conf_sigma is not None:
+            loss = torch.exp(-conf_sigma) * 5 * loss + conf_sigma / 2
+            loss = torch.mean(loss)
+        else:
+            loss = torch.mean(loss)
+
+        return loss
 
 ##############################################################################
 # Generators/Discriminators/Classifiers
