@@ -428,6 +428,7 @@ class ForkGANModel(BaseModel):
                     "G_B_fake_rec_inst",
                     "cycle_B_inst",
                     "B_rec_inst",
+                    "loss_Conf",
                 ]
 
         if opt.distributed:
