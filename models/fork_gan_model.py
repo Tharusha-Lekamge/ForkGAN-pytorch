@@ -80,6 +80,7 @@ class ForkGANModel(BaseModel):
             "G_DC",
             "Perc",
             "DC",
+            "Conf",
         ]
         # specify the images you want to save/display. The training/test scripts will call <BaseModel.get_current_visuals>
         visual_names_A = ["real_A", "fake_B", "rec_A", "rec_fake_B", "fake_A_"]
