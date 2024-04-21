@@ -4,6 +4,9 @@ from collections import OrderedDict
 from abc import ABC, abstractmethod
 from . import networks
 
+import shutil
+from datetime import datetime
+
 
 class BaseModel(ABC):
     """This class is an abstract base class (ABC) for models.
@@ -157,6 +160,33 @@ class BaseModel(ABC):
         Parameters:
             epoch (int) -- current epoch; used in the file name '%s_net_%s.pth' % (epoch, name)
         """
+        # Create a folder with current date and time
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        backup_folder = os.path.join(self.save_dir, timestamp)
+        os.makedirs(backup_folder, exist_ok=True)
+
+        # Move previous save points to the backup folder
+        for name in self.model_names:
+            if isinstance(name, str):
+                prev_save_filename = '%s_net_%s.pth' % (epoch, name)
+                prev_save_path = os.path.join(self.save_dir, prev_save_filename)
+                if os.path.exists(prev_save_path):
+                    shutil.move(prev_save_path, backup_folder)
+
+        if hasattr(self, 'optimizer_names'):
+            for name in self.optimizer_names:
+                prev_save_filename = '%s_%s.pth' % (epoch, name)
+                prev_save_path = os.path.join(self.save_dir, prev_save_filename)
+                if os.path.exists(prev_save_path):
+                    shutil.move(prev_save_path, backup_folder)
+
+        if hasattr(self, 'scaler'):
+            prev_save_filename = '%s_scaler.pth' % (epoch)
+            prev_save_path = os.path.join(self.save_dir, prev_save_filename)
+            if os.path.exists(prev_save_path):
+                shutil.move(prev_save_path, backup_folder)
+
+        # Save the new checkpoints
         for name in self.model_names:
             if isinstance(name, str):
                 save_filename = '%s_net_%s.pth' % (epoch, name)

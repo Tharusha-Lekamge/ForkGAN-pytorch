@@ -28,6 +28,7 @@ See frequently asked questions at: https://github.com/junyanz/pytorch-CycleGAN-a
 """
 
 import os
+import time
 from options.test_options import TestOptions
 from data import create_dataset
 from models import create_model
@@ -41,9 +42,9 @@ from torchvision import transforms
 from scipy.stats import entropy
 import numpy as np
 from torch.distributions import MultivariateNormal
-import seaborn as sns # This is for visualization
+#import seaborn as sns # This is for visualization
 import scipy
-import pandas as pd
+#import pandas as pd
 
 # FUNCTION TO CALCULATE FID SCORE
 def matrix_sqrt(x):
@@ -73,6 +74,7 @@ def frechet_distance(mu_x, mu_y, sigma_x, sigma_y):
 
 # Preprocess image function to fit the inception model
 def preprocess(img):
+    print("Preprocessing image")
     img = torch.nn.functional.interpolate(img, size=(299, 299), mode='bilinear', align_corners=False)
     return img
 
@@ -91,51 +93,51 @@ if __name__ == "__main__":
 
     print(opt.gpu)
 
-    # INCEPTION V3 MODEL for FID
-    inception_model = inception_v3(pretrained=False)
-    inception_model.load_state_dict(torch.load("inception_v3_google-1a9a5a14.pth"))
-    inception_model.to(device)
-    inception_model = inception_model.eval()
+    # # INCEPTION V3 MODEL for FID
+    # inception_model = inception_v3(pretrained=False)
+    # inception_model.load_state_dict(torch.load("inception_v3_google-1a9a5a14.pth"))
+    # # inception_model.to(device)
+    # inception_model = inception_model.eval()
 
-    inception_model.fc = torch.nn.Identity()
+    # inception_model.fc = torch.nn.Identity()
 
-    # UNIT TEST FOR INCEPTION MODEL
-    test_identity_noise = torch.randn(100, 100)
-    assert torch.equal(test_identity_noise, inception_model.fc(test_identity_noise))
-    print("Unit test for Inception model Success!")
+    # # UNIT TEST FOR INCEPTION MODEL
+    # test_identity_noise = torch.randn(100, 100)
+    # assert torch.equal(test_identity_noise, inception_model.fc(test_identity_noise))
+    # print("Unit test for Inception model Success!")
 
-    # UNIT TEST FOR FID CALCULATION FUNCTIONS
+    # # UNIT TEST FOR FID CALCULATION FUNCTIONS
 
-    # UNIT TEST
+    # # UNIT TEST
 
-    mean1 = torch.Tensor([0, 0]) # Center the mean at the origin
-    covariance1 = torch.Tensor( # This matrix shows independence - there are only non-zero values on the diagonal
-        [[1, 0],
-        [0, 1]]
-    )
-    dist1 = MultivariateNormal(mean1, covariance1)
+    # mean1 = torch.Tensor([0, 0]) # Center the mean at the origin
+    # covariance1 = torch.Tensor( # This matrix shows independence - there are only non-zero values on the diagonal
+    #     [[1, 0],
+    #     [0, 1]]
+    # )
+    # dist1 = MultivariateNormal(mean1, covariance1)
 
-    mean2 = torch.Tensor([0, 0]) # Center the mean at the origin
-    covariance2 = torch.Tensor( # This matrix shows dependence 
-        [[2, -1],
-        [-1, 2]]
-    )
-    dist2 = MultivariateNormal(mean2, covariance2)
+    # mean2 = torch.Tensor([0, 0]) # Center the mean at the origin
+    # covariance2 = torch.Tensor( # This matrix shows dependence 
+    #     [[2, -1],
+    #     [-1, 2]]
+    # )
+    # dist2 = MultivariateNormal(mean2, covariance2)
 
-    assert torch.isclose(
-        frechet_distance(
-            dist1.mean, dist2.mean,
-            dist1.covariance_matrix, dist2.covariance_matrix
-        ),
-        4 - 2 * torch.sqrt(torch.tensor(3.))
-    )
+    # assert torch.isclose(
+    #     frechet_distance(
+    #         dist1.mean, dist2.mean,
+    #         dist1.covariance_matrix, dist2.covariance_matrix
+    #     ),
+    #     4 - 2 * torch.sqrt(torch.tensor(3.))
+    # )
 
-    assert (frechet_distance(
-            dist1.mean, dist1.mean,
-            dist1.covariance_matrix, dist1.covariance_matrix
-        ).item() == 0)
+    # assert (frechet_distance(
+    #         dist1.mean, dist1.mean,
+    #         dist1.covariance_matrix, dist1.covariance_matrix
+    #     ).item() == 0)
 
-    print("Unit test for FID calculation Success!")
+    # print("Unit test for FID calculation Success!")
 
     # hard-code some parameters for test
     opt.num_threads = 0  # test code only supports num_threads = 0
@@ -152,6 +154,8 @@ if __name__ == "__main__":
     )  # create a dataset given opt.dataset_mode and other options
     model = create_model(opt)  # create a model given opt.model and other options
     model.setup(opt)  # regular setup: load and print networks; create schedulers
+    length_ds = len(dataset)
+    print("len dataset: ",length_ds)
 
     if opt.dataset_mode == "unaligned_coco":
         pass
@@ -177,15 +181,23 @@ if __name__ == "__main__":
         # For [CycleGAN]: It should not affect CycleGAN as CycleGAN uses instancenorm without dropout.
         if opt.eval:
             model.eval()
+
+        start_time = time.time()
         for i, data in enumerate(dataset):
             if i >= opt.num_test:  # only apply our model to opt.num_test images.
                 break
             model.set_input(data)  # unpack data from data loader
             model.test()  # run inference
             visuals = model.get_current_visuals()  # get image results
+            for key in list(visuals.keys()):
+                if key != 'real_A' and key != 'fake_B':
+                    del visuals[key]
             img_path = model.get_image_paths()  # get image paths
             if i % 5 == 0:  # save images to an HTML file
-                print("processing (%04d)-th image... %s" % (i, img_path))
+                current_time = time.time()
+                time_per_image = (current_time - start_time)/(i+1)
+                remaining_time = (time_per_image * (length_ds - i))/60
+                print("processing (%04d/%04d)-th image... %s - Remaining time: %01d" % (i,length_ds, img_path, remaining_time))
             save_images(
                 webpage,
                 visuals,
@@ -193,60 +205,5 @@ if __name__ == "__main__":
                 aspect_ratio=opt.aspect_ratio,
                 width=opt.display_winsize,
             )
-            try:
-                real_example = visuals["real_B"]
-                fake_example = visuals["fake_A"]
-                real_example = preprocess(real_example)
-                fake_example = preprocess(fake_example)
-                real_features = inception_model(real_example)
-                fake_features = inception_model(fake_example)
-                real_features_list.append(real_features)
-                fake_features_list.append(fake_features)
-            except:
-                print("Error in calculating Inception features")
 
         webpage.save()  # save the HTML
-
-    # CALCULATE FID SCORE
-    real_features = torch.cat(real_features_list)
-    fake_features = torch.cat(fake_features_list)
-
-    real_mean = real_features.mean(dim=0)
-    fake_mean = fake_features.mean(dim=0)
-
-    real_cov = get_covariance(real_features)
-    fake_cov = get_covariance(fake_features)
-
-    # Some assertions to help you debug -> Check what they stand for
-    assert tuple(sigma_fake.shape) == (fake_features_all.shape[1], fake_features_all.shape[1])
-    assert torch.abs(sigma_fake[0, 0] - 2.5e-2) < 1e-2 and torch.abs(sigma_fake[-1, -1] - 5e-2) < 1e-2
-    assert tuple(sigma_real.shape) == (real_features_all.shape[1], real_features_all.shape[1])
-    assert torch.abs(sigma_real[0, 0] - 3.5768e-2) < 1e-4 and torch.abs(sigma_real[0, 1] + 5.3236e-4) < 1e-4
-    assert tuple(mu_fake.shape) == (fake_features_all.shape[1],)
-    assert tuple(mu_real.shape) == (real_features_all.shape[1],)
-    assert torch.abs(mu_real[0] - 0.3099) < 0.01 and torch.abs(mu_real[1] - 0.2721) < 0.01
-    assert torch.abs(mu_fake[0] - 0.37) < 0.05 and torch.abs(mu_real[1] - 0.27) < 0.05
-    print("Success!")
-
-    fid_score = frechet_distance(real_mean, fake_mean, real_cov, fake_cov)
-
-    print("FID Score: ", fid_score)
-
-    # Save the FID score to a file
-    with open("fid_score.txt", "w") as f:
-        f.write(str(fid_score.item()))
-        f.close()
-
-    # Visualise pairwise multivariate distributions of the inception features
-    indices = [2, 4, 5]
-    fake_dist = MultivariateNormal(mu_fake[indices], sigma_fake[indices][:, indices])
-    fake_samples = fake_dist.sample((5000,))
-    real_dist = MultivariateNormal(mu_real[indices], sigma_real[indices][:, indices])
-    real_samples = real_dist.sample((5000,))
-
-    df_fake = pd.DataFrame(fake_samples.numpy(), columns=indices)
-    df_real = pd.DataFrame(real_samples.numpy(), columns=indices)
-    df_fake["is_real"] = "no"
-    df_real["is_real"] = "yes"
-    df = pd.concat([df_fake, df_real])
-    sns.pairplot(df, plot_kws={'alpha': 0.1}, hue='is_real')

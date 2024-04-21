@@ -15,4 +15,4 @@
 #python train.py --dataroot ./datasets/bdd100k --name bdd100k-original --model fork_gan --input_nc 1 --output_nc 1 --load_size 512 --crop_size 512 --preprocess scale_height_and_crop --lambda_identity 0.0 --lr 0.0001 --n_epochs 10 --n_epochs_decay 10 --netD ms3 --norm none
 #python train.py --dataroot ./datasets/augmented_lol --name bdd100k-rotated --model fork_gan --input_nc 3 --output_nc 3 --load_size 512 --crop_size 512 --preprocess scale_height_and_crop --lambda_identity 0.0 --lr 0.0001 --n_epochs 10 --n_epochs_decay 10 --netD ms3 --norm none --lambda_conf 1 --continue_train --batch_size 2
 
-python test.py --dataroot ./datasets/neucon --name bdd100k-rotated --model fork_gan --input_nc 3 --output_nc 3 --load_size 512 --crop_size 512 --preprocess scale_height_and_crop --lambda_identity 0.0 --netD ms3 --norm none --lambda_conf 1 --batch_size 2
+python eval.py --dataroot ./datasets/neucon --name bdd100k-rotated-copy --model fork_gan --input_nc 3 --output_nc 3 --load_size 512 --crop_size 512 --preprocess scale_height_and_crop --lambda_identity 0.0 --netD ms3 --norm none --lambda_conf 1 --batch_size 2
