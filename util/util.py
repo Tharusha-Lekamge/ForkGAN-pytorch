@@ -4,6 +4,7 @@ import torch
 import numpy as np
 from PIL import Image
 import os
+import wandb
 
 
 def tensor2im(input_image, imtype=np.uint8):
@@ -81,6 +82,9 @@ def save_image_grid(image_dict, image_path):
     ), axis=1)
 
     AB = np.concatenate((A,B), axis=0)
+    images = wandb.Image(AB, caption="Top: Output, Bottom: Input")
+
+    wandb.log({"examples": images})
     save_image(AB, image_path)
 
 def save_image_grid_inst(image_dict, image_path, size=(64, 64)):

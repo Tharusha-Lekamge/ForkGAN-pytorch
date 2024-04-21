@@ -28,6 +28,12 @@ from util.util import save_image_grid, save_image_grid_inst
 from pathlib import Path
 import os
 from PIL import ImageDraw
+import wandb
+
+
+def initialize_wandb(opt):
+    wandb.init(project='pt-augan')
+    wandb.config.update(opt)
 
 if __name__ == '__main__':
     opt = TrainOptions().parse()   # get training options
@@ -37,6 +43,8 @@ if __name__ == '__main__':
         opt.ngpus = opt.world_size
         opt.batch_size = int(opt.batch_size / opt.ngpus)
         opt.num_threads = int(opt.num_threads / opt.ngpus)
+
+    initialize_wandb(opt)
 
     dataset = create_dataset(opt)  # create a dataset given opt.dataset_mode and other options
     dataset_size = len(dataset)    # get the number of images in the dataset.
@@ -88,6 +96,9 @@ if __name__ == '__main__':
                 visualizer.print_current_losses(epoch, epoch_iter, losses, t_comp, t_data)
                 if opt.display_id > 0:
                     visualizer.plot_current_losses(epoch, float(epoch_iter) / dataset_size, losses)
+
+            # Log to wandb
+            wandb.log(model.get_current_losses(), step=total_iters)
 
             if total_iters % opt.save_latest_freq == 0 and opt.gpu == 0:   # cache our latest model every <save_latest_freq> iterations
                 print('saving the latest model (epoch %d, total_iters %d)' % (epoch, total_iters))
