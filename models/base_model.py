@@ -6,6 +6,7 @@ from . import networks
 
 import shutil
 from datetime import datetime
+import wandb
 
 
 class BaseModel(ABC):
@@ -164,6 +165,7 @@ class BaseModel(ABC):
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         backup_folder = os.path.join(self.save_dir, timestamp)
         os.makedirs(backup_folder, exist_ok=True)
+        artifact = wandb.Artifact('model', type='model')
 
         # Move previous save points to the backup folder
         for name in self.model_names:
@@ -193,6 +195,7 @@ class BaseModel(ABC):
                 save_path = os.path.join(self.save_dir, save_filename)
                 net = getattr(self, 'net' + name)
                 torch.save(net.cpu().state_dict(), save_path)
+                artifact.add_file(save_path)
                 net.cuda('cuda:' + str(self.gpu))
 
         if hasattr(self, 'optimizer_names'):
@@ -201,12 +204,15 @@ class BaseModel(ABC):
                 save_path = os.path.join(self.save_dir, save_filename)
                 optim = getattr(self, name)
                 torch.save(optim.state_dict(), save_path)
+                artifact.add_file(save_path)
 
         if hasattr(self, 'scaler'):
             scaler = getattr(self, 'scaler')
             save_filename = '%s_scaler.pth' % (epoch)
             save_path = os.path.join(self.save_dir, save_filename)
             torch.save(scaler.state_dict(), save_path)
+            artifact.add_file(save_path)
+        wandb.log_artifact(artifact)
 
     def __patch_instance_norm_state_dict(self, state_dict, module, keys, i=0):
         """Fix InstanceNorm checkpoints incompatibility (prior to 0.4)"""
