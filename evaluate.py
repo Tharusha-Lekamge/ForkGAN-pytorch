@@ -68,6 +68,6 @@ def calculate_fid_score(real_images_path, fake_images_path, num_images=2000):
 
 # Example usage:
 real_images_path = "datasets/merged_ds/testB/*.jpg"
-fake_images_path = "datasets/fid/fake/*.png"
+fake_images_path = "results/bdd100k-complete/fid/fake/*.png"
 fid_score = calculate_fid_score(real_images_path, fake_images_path)
 print("FID Score:", fid_score)

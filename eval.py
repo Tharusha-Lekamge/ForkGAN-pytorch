@@ -190,7 +190,7 @@ if __name__ == "__main__":
             model.test()  # run inference
             visuals = model.get_current_visuals()  # get image results
             for key in list(visuals.keys()):
-                if key != 'real_A' and key != 'fake_B':
+                if key != 'real_A' and key != 'fake_B' and key != 'real_B' and key != 'fake_A':
                     del visuals[key]
             img_path = model.get_image_paths()  # get image paths
             if i % 5 == 0:  # save images to an HTML file
