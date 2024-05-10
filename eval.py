@@ -37,13 +37,13 @@ from util import html
 import torch
 
 # FID Score calculator
-from torchvision.models import inception_v3
-from torchvision import transforms
-from scipy.stats import entropy
-import numpy as np
-from torch.distributions import MultivariateNormal
+# from torchvision.models import inception_v3
+# from torchvision import transforms
+# from scipy.stats import entropy
+# import numpy as np
+# from torch.distributions import MultivariateNormal
 #import seaborn as sns # This is for visualization
-import scipy
+# import scipy
 #import pandas as pd
 
 # FUNCTION TO CALCULATE FID SCORE
